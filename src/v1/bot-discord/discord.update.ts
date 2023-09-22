@@ -1,13 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Context, On, Once, ContextOf } from 'necord';
-import { Client, VoiceState, MessageReaction, User } from 'discord.js';
-import axios from 'axios';
+import { Client, MessageReaction, User, Message } from 'discord.js';
+// import axios from 'axios';
 
 @Injectable()
 export class AppUpdate {
   private readonly logger = new Logger(AppUpdate.name);
-
-  public constructor(private readonly client: Client) {}
+  public constructor(private readonly client: Client) { }
 
   @Once('ready')
   public onReady(@Context() [client]: ContextOf<'ready'>) {
@@ -19,17 +18,17 @@ export class AppUpdate {
     @Context() [reaction, user]: [MessageReaction, User],
   ) {
     this.logger.log(`Reaction added: ${reaction.emoji.name} by ${user.tag}`);
-    axios.post(process.env.URL_SIA_BE, {
-      query: `mutation addInsiderPointFromDiscord($secret: String, $content: String, $discordUsername: String, $type:String) {
-        addInsiderPointFromDiscord(secret: $secret, content: $content, discordUsername: $discordUsername, type: $type)
-      }
-      `,
-      variables: {
-        secret: process.env.SECRET_AUTH,
-        type: 'reactionAdd',
-        discordUsername: user.tag,
-      },
-    });
+    //    axios.post(process.env.URL_SIA_BE, {
+    //      query: `mutation addInsiderPointFromDiscord($secret: String, $content: String, $discordUsername: String, $type:String) {
+    //        addInsiderPointFromDiscord(secret: $secret, content: $content, discordUsername: $discordUsername, type: $type)
+    //      }
+    //      `,
+    //      variables: {
+    //        secret: process.env.SECRET_AUTH,
+    //        type: 'reactionAdd',
+    //        discordUsername: user.tag,
+    //      },
+    //    });
   }
 
   @On('messageReactionRemove')
@@ -37,17 +36,17 @@ export class AppUpdate {
     @Context() [reaction, user]: [MessageReaction, User],
   ) {
     this.logger.log(`Reaction removed: ${reaction.emoji.name} by ${user.tag}`);
-    axios.post(process.env.URL_SIA_BE, {
-      query: `mutation addInsiderPointFromDiscord($secret: String, $content: String, $discordUsername: String, $type:String) {
-        addInsiderPointFromDiscord(secret: $secret, content: $content, discordUsername: $discordUsername, type: $type)
-      }
-      `,
-      variables: {
-        secret: process.env.SECRET_AUTH,
-        type: 'reactionRemove',
-        discordUsername: user.tag,
-      },
-    });
+    //    axios.post(process.env.URL_SIA_BE, {
+    //      query: `mutation addInsiderPointFromDiscord($secret: String, $content: String, $discordUsername: String, $type:String) {
+    //        addInsiderPointFromDiscord(secret: $secret, content: $content, discordUsername: $discordUsername, type: $type)
+    //      }
+    //      `,
+    //      variables: {
+    //        secret: process.env.SECRET_AUTH,
+    //        type: 'reactionRemove',
+    //        discordUsername: user.tag,
+    //      },
+    //    });
   }
 
   @On('messageCreate')
@@ -75,36 +74,33 @@ export class AppUpdate {
     const notConnectedRole = message.guild.roles.cache.find(
       (role) => role.name === 'Not Connected',
     );
-
-    await axios
-      .post(process.env.URL_SIA_BE, {
-        query: `mutation addInsiderPointFromDiscord($secret: String, $content: String, $discordUsername: String) {
-        addInsiderPointFromDiscord(secret: $secret, content: $content, discordUsername: $discordUsername)
-      }
-      `,
-        variables: {
-          secret: process.env.SECRET_AUTH,
-          content: message.content,
-          discordUsername: message.author.tag,
-        },
-      })
-      .then(async (res) => {
-        if (res.data.errors) {
-          throw 'Error Graphql';
-        }
-
-        await member.roles.add(connectedRole);
-        await member.roles.remove(notConnectedRole);
-        this.logger.log(`Added role "Connected" to ${message.author.tag}`);
-      })
-      .catch(async (err) => {
-        await member.roles.add(notConnectedRole);
-        await member.roles.remove(connectedRole);
-
-        this.logger.log(`Remove role "Connected" to ${message.author.tag}`);
-      });
-
-    // console.log(message);
+    //    await axios
+    //      .post(process.env.URL_SIA_BE, {
+    //        query: `mutation addInsiderPointFromDiscord($secret: String, $content: String, $discordUsername: String) {
+    //        addInsiderPointFromDiscord(secret: $secret, content: $content, discordUsername: $discordUsername)
+    //      }
+    //      `,
+    //        variables: {
+    //          secret: process.env.SECWRET_AUTH,
+    //          content: message.content,
+    //          discordUsername: message.author.tag,
+    //        },
+    //      })
+    //      .then(async (res) => {
+    //        if (res.data.errors) {
+    //          throw 'Error Graphql';
+    //        }
+    //
+    //        await member.roles.add(connectedRole);
+    //        await member.roles.remove(notConnectedRole);
+    //        this.logger.log(`Added role "Connected" to ${message.author.tag}`);
+    //      })
+    //      .catch(async (err) => {
+    //        await member.roles.add(notConnectedRole);
+    //        await member.roles.remove(connectedRole);
+    //
+    //        this.logger.log(`Remove role "Connected" to ${message.author.tag}`);
+    //      });
   }
 
   @On('warn')
@@ -112,19 +108,30 @@ export class AppUpdate {
     this.logger.warn(message);
   }
 
-  // pantai member left/join voice chanenl
+  // Left/join voice channel member
   @On('voiceStateUpdate')
   public async onVoiceStateUpdate(
     @Context() [before, after]: ContextOf<'voiceStateUpdate'>,
   ) {
-    const member = after.member || before.member; // Njumuk objek member sing join/left voice
-    const userId = member.id;
+    const member = after.member || before.member;
+    const userId = member.user.tag;
     if (before.channel && !after.channel) {
-      //left
+      // left voice channel
       this.logger.log(`User ${userId} left a voice channel`);
     } else if (!before.channel && after.channel) {
-      //join
+      //join voice channel
       this.logger.log(`User ${userId} joined a voice channel`);
     }
   }
+
+  // Member delete message
+  @On('messageDelete')
+  public async onMessageDelete(@Context() [message]: ContextOf<'messageDelete'>) {
+    if (message instanceof Message) {
+      this.logger.log(
+        `Deleted message: "${message.content}" by ${message.author.tag} | ${message.channelId}`,
+      );
+    }
+  }
+
 }
